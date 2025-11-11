@@ -38,7 +38,10 @@ with open("label_encoder.pkl", "rb") as f:
 lstm_model = load_model("lstm_model.h5")
 lstm_scaler = joblib.load("scaler.pkl")
 
-# ✅ Load dataset only for last 3 rows (LSTM seed)
+
+# ============================================================
+# ✅ LOAD DATASET (FOR LSTM HISTORY ONLY)
+# ============================================================
 df = pd.read_csv("water_quality_dataset.csv").replace({np.nan: 0})
 
 
@@ -70,7 +73,7 @@ def predict():
 
 
 # ============================================================
-# ✅ OPTIMIZED LSTM FUTURE FORECAST
+# ✅ LSTM FUTURE PREDICTION
 # ============================================================
 @app.route("/predict_future", methods=["POST"])
 def predict_future():
@@ -80,6 +83,7 @@ def predict_future():
 
         tf.config.run_functions_eagerly(False)
 
+        # last 3 rows
         window = 3
         recent = df[["TDS", "Turbidity"]].tail(window).values
         scaled = lstm_scaler.transform(recent)
@@ -96,7 +100,6 @@ def predict_future():
                 "Turbidity": float(real[1])
             })
 
-            # Move sliding window
             input_seq = np.array([np.vstack([input_seq[0][1:], scaled_pred])])
 
         return jsonify({"future_predictions": predictions}), 200
@@ -106,7 +109,7 @@ def predict_future():
 
 
 # ============================================================
-# ✅ IOT UPDATE — ESP32 sends data
+# ✅ IOT UPDATE — ESP32 real sensor values
 # ============================================================
 @app.route("/iot_update", methods=["POST"])
 def iot_update():
@@ -120,9 +123,11 @@ def iot_update():
             "Timestamp": int(data.get("ts", time.time()))
         }
 
+        # Save latest
         with open("latest_iot.json", "w") as f:
             json.dump(row, f)
 
+        # Save to history
         if not os.path.exists("iot_history.json"):
             with open("iot_history.json", "w") as f:
                 json.dump([], f)
