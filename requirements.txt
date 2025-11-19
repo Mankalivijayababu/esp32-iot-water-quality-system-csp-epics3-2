@@ -1,7 +1,8 @@
 Flask
+flask-cors
 gunicorn
 numpy
 pandas
 scikit-learn
+tensorflow==2.10.0
 joblib
-tensorflow==2.10.0      # only if you're using lstm_model.h5
