@@ -8,7 +8,7 @@ import joblib
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
-CORS(app)   # allow frontend requests
+CORS(app)
 
 
 # ============================================================
@@ -22,13 +22,14 @@ print("🔄 Loading Label Encoder...")
 with open("label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 
-print("🔄 Loading LSTM model (.keras)...")
-lstm_model = load_model("lstm_model.keras")
+print("🔄 Loading LSTM model (.h5)...")
+lstm_model = load_model("lstm_model.h5")   # USING H5 FILE
 
 print("🔄 Loading LSTM scaler...")
 lstm_scaler = joblib.load("scaler.pkl")
 
-# Load dataset (needed for last 14 days)
+
+# Load dataset for last 14 days (needed for LSTM seq)
 df = pd.read_csv("water_quality_big_dataset.csv", parse_dates=["Date"])
 df = df.sort_values("Date").reset_index(drop=True)
 
@@ -37,6 +38,7 @@ df = df.sort_values("Date").reset_index(drop=True)
 # HELPERS
 # ============================================================
 def get_float(data, *keys, default=0.0):
+    """Safely extract numbers from JSON."""
     for key in keys:
         if key in data:
             try:
@@ -54,8 +56,8 @@ def predict_quality():
     try:
         data = request.get_json()
 
-        tds = get_float(data, "TDS", "tds", default=0)
-        turb = get_float(data, "Turbidity", "turbidity", default=0)
+        tds = get_float(data, "TDS", "tds")
+        turb = get_float(data, "Turbidity", "turbidity")
 
         X = pd.DataFrame([[tds, turb]], columns=["TDS", "Turbidity"])
 
@@ -74,7 +76,7 @@ def predict_quality():
 
 
 # ============================================================
-# 2) LSTM FUTURE VALUES (TDS + TURBIDITY)
+# 2) LSTM FUTURE TDS + TURBIDITY VALUES
 # ============================================================
 @app.route("/predict_future", methods=["POST"])
 def predict_future():
@@ -107,7 +109,7 @@ def predict_future():
 
 
 # ============================================================
-# 3) LSTM QUALITY FORECAST (Safe / Moderate / Unsafe)
+# 3) LSTM FUTURE QUALITY CLASSIFICATION
 # ============================================================
 @app.route("/predict_future_quality", methods=["POST"])
 def predict_future_quality():
@@ -129,7 +131,7 @@ def predict_future_quality():
             tds = float(real[0])
             turb = float(real[1])
 
-            # Simple rule-based quality
+            # Rule-based water quality
             if tds < 500:
                 q = "Safe"
             elif tds < 1000:

@@ -1,9 +1,9 @@
 # ------------------------------------------------------------
-#  train_model.py  (FINAL VERSION)
+#  train_model.py  (FINAL VERSION - h5 SAFE FOR RENDER)
 #  ✔ Trains Random Forest Classification
-#  ✔ Trains LSTM Time-Series Forecasting (TDS + Turbidity)
+#  ✔ Trains LSTM Time-Series Forecasting
 #  ✔ Saves: rf_model.pkl, label_encoder.pkl,
-#            lstm_model.keras, scaler.pkl
+#            lstm_model.h5, scaler.pkl
 # ------------------------------------------------------------
 
 import pandas as pd
@@ -17,9 +17,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Input
 from tensorflow.keras.optimizers import Adam
-
 
 # ------------------------------------------------------------
 # LOAD DATA
@@ -28,7 +27,6 @@ df = pd.read_csv("water_quality_big_dataset.csv", parse_dates=["Date"])
 df = df.sort_values("Date").reset_index(drop=True)
 
 print("✔ Loaded dataset:", len(df), "rows")
-
 
 # ------------------------------------------------------------
 # RANDOM FOREST CLASSIFICATION
@@ -69,6 +67,7 @@ acc = accuracy_score(y_test, y_pred)
 print("\n✔ RANDOM FOREST ACCURACY:", round(acc * 100, 2), "%")
 print(classification_report(y_test, y_pred))
 
+# Save RF model + Label Encoder
 with open("rf_model.pkl", "wb") as f:
     pickle.dump(rf_pipeline, f)
 
@@ -76,7 +75,6 @@ with open("label_encoder.pkl", "wb") as f:
     pickle.dump(label_encoder, f)
 
 print("✔ Saved: rf_model.pkl, label_encoder.pkl")
-
 
 # ------------------------------------------------------------
 # LSTM TIME SERIES FORECASTING
@@ -105,13 +103,16 @@ split = int(len(X_lstm) * 0.8)
 X_train_lstm, X_val_lstm = X_lstm[:split], X_lstm[split:]
 y_train_lstm, y_val_lstm = y_lstm[:split], y_lstm[split:]
 
+# --- LSTM MODEL (.h5 SAFE VERSION, SAME ARCHITECTURE) ---
 model = Sequential([
-    LSTM(64, input_shape=(window, len(features))),
+    Input(shape=(window, len(features))),    # SAME ARCHITECTURE
+    LSTM(64, return_sequences=False),
     Dense(32, activation="relu"),
     Dense(len(features))
 ])
 
 model.compile(optimizer=Adam(0.001), loss="mse", metrics=["mae"])
+
 model.fit(
     X_train_lstm, y_train_lstm,
     validation_data=(X_val_lstm, y_val_lstm),
@@ -120,13 +121,13 @@ model.fit(
     verbose=1
 )
 
-# Save in Keras 3 format
-model.save("lstm_model.keras")
+# Save LSTM in .h5 format (REQUIRED FOR RENDER)
+model.save("lstm_model.h5")   # ✔ FIXED
 
 # Save scaler
 joblib.dump(scaler, "scaler.pkl")
 
-print("✔ Saved: lstm_model.keras, scaler.pkl")
+print("✔ Saved: lstm_model.h5, scaler.pkl")
 
 print("\n==============================")
 print("TRAINING COMPLETE")
