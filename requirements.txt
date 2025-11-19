@@ -3,6 +3,6 @@ gunicorn
 pandas
 numpy
 scikit-learn
-tensorflow==2.13.0
+tensorflow-cpu==2.11.0
 joblib
-python-dateutil
+python==3.11.0
