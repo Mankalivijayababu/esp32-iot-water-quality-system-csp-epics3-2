@@ -1,28 +1,42 @@
-# Use Python 3.10 base image
+# ---------------------------
+# 1. BASE IMAGE (Python 3.10 + minimal)
+# ---------------------------
 FROM python:3.10-slim
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
+# ---------------------------
+# 2. Install system dependencies
+# ---------------------------
 RUN apt-get update && apt-get install -y \
     build-essential \
+    libhdf5-dev \
+    libatlas-base-dev \
+    liblapack-dev \
+    gfortran \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file
-COPY requirements.txt .
+# ---------------------------
+# 3. Set working directory
+# ---------------------------
+WORKDIR /app
 
-# Install all lightweight dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install TensorFlow from a FAST mirror to avoid Render timeout
-RUN pip install --no-cache-dir tensorflow-cpu==2.10.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# Copy the rest of the project files
+# ---------------------------
+# 4. Copy all backend files
+# ---------------------------
 COPY . .
 
-# Expose port 10000 (Render default for web services)
+# ---------------------------
+# 5. Install Python dependencies
+# ---------------------------
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ---------------------------
+# 6. Expose Render port
+# ---------------------------
+ENV PORT=10000
 EXPOSE 10000
 
-# Start the server using gunicorn
+# ---------------------------
+# 7. Start Gunicorn
+# ---------------------------
 CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app"]
