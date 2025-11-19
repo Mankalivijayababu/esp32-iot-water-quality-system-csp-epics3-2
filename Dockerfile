@@ -1,45 +1,45 @@
-# Use Python 3.10 Slim
+# Use Python 3.10 slim
 FROM python:3.10-slim
 
-# -------------------------------
-# Install required system packages
-# -------------------------------
-RUN apt-get update && apt-get install -y \
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ---------------------------
+# Install system dependencies (NO atlas, NO lapack issues)
+# ---------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libhdf5-dev \
-    liblapack-dev \
     libblas-dev \
+    liblapack-dev \
     gfortran \
-    python3-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# -------------------------------
-# Set working directory
-# -------------------------------
+# ---------------------------
+# Install TensorFlow 2.10.0 (CPU only)
+# ---------------------------
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir tensorflow-cpu==2.10.0
+
+# ---------------------------
+# Install backend Python deps
+# ---------------------------
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ---------------------------
+# Copy backend code + model files
+# ---------------------------
+COPY . /app
 WORKDIR /app
 
-# -------------------------------
-# Copy requirements and install
-# -------------------------------
-COPY requirements.txt .
+# ---------------------------
+# Expose port
+# ---------------------------
+EXPOSE 5000
 
-RUN pip install --upgrade pip setuptools wheel
-
-# TensorFlow 2.10.0 (works on CPU x86)
-RUN pip install tensorflow==2.10.0
-
-# Install other Python packages
-RUN pip install -r requirements.txt
-
-# -------------------------------
-# Copy backend source code
-# -------------------------------
-COPY . .
-
-# -------------------------------
-# Expose Render port
-# -------------------------------
-ENV PORT=10000
-
-# Start server
-CMD gunicorn --bind 0.0.0.0:$PORT app:app
+# ---------------------------
+# Run app.py
+# ---------------------------
+CMD ["python", "app.py"]
