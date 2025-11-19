@@ -1,7 +1,7 @@
 Flask
 flask-cors
 gunicorn
-numpy
+numpy==1.23.5
 pandas
 scikit-learn
 tensorflow==2.10.0
